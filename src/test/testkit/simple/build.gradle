@@ -1,0 +1,8 @@
+plugins {
+    id 'java'
+    id 'com.github.sebersole.testkit-junit5'
+}
+
+testkit {
+    // accept all defaults
+}
