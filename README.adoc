@@ -1,0 +1,54 @@
+# testkit-junit5-plugin
+
+Defines support for managing TestKit test projects, as well as some even cooler support for JUnit 5 tests
+
+```
+plugins {
+    id 'com.github.sebersole.testkit-junit5'
+}
+```
+
+The plugin accepts no configuration.
+
+At configuration time, the plugin has the following effects:
+
+* Creation of TestKit specific Configurations:
+  ** `testKitCompileClasspath`
+    *** extends from `configurations.testCompileClasspath`
+    *** automatically adds `gradleApi()`
+    *** automatically adds `gradleTestKit()`
+    *** automatically adds `hamcrest-all`
+    *** automatically adds `junit-jupiter-api`
+    *** automatically adds `junit-jupiter-params`
+  ** `testKitRuntimeClasspath`
+    *** extends from `configurations.testKitCompileClasspath`
+    *** extends from `configurations.testRuntimeClasspath`
+    *** automatically adds `sourceSets.testKit.output`
+    *** automatically adds `junit-jupiter-engine`
+* Creation of a `testKit` source set
+  ** implied task : `compileTestKitJava`
+  ** implied task : `processTestKitResources`
+  ** compile classpath : `configurations.testKitCompileClasspath`
+  ** runtime classpath : `configurations.testKitRuntimeClasspath`
+* Creation of a `testKitTest` Test task
+  ** classpath : `sourceSets.testKit.runtimeClasspath`
+  ** dependsOn : `tasks.test`
+  ** dependsOn : `tasks.compileTestKitJava`
+  ** dependsOn : `tasks.processTestKitResources`
+* Forces use of the JUnit Platform (JUnit 5) testing engine
+
+At build time, the plugin has the following effects:
+
+* When `tasks.processTestKitResources` triggers a `doLast` action to generate
+  a "marker" file into the `sourceSets.testKit.output.resourcesDir`. The marker
+  file allows testing to locate the directory to which `src/testkit/resources`
+  was copied via classpath resource lookup.  This file also contains an entry
+  with the path of a temporary directory which can be used to create
+  TestKit projects isolated for each test method.
+* Creates and maintains a `ProjectContainer` reference as part of the JUnit
+  lifecycle
+* For tests defining `ProjectScope` parameter, `TestKitJunitExtension` creates
+  and injects a `ProjectScope` instance.  This includes:
+  ** creating a new directory in the "temporary directory" to act as the `GradleRunner#projectDirectory`
+  ** copies the `$buildDir/resources/testKit/{projectName}` directory to `$buildDir/tmp/testKit/{random}/{projectName}`
+

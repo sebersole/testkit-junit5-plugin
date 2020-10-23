@@ -1,7 +1,5 @@
 package com.github.sebersole.testkit;
 
-import java.io.File;
-
 import org.gradle.testkit.runner.GradleRunner;
 
 import org.junit.jupiter.api.Test;
@@ -9,45 +7,27 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.endsWith;
 
-/**
- * @author Steve Ebersole
- */
+
 @TestKit
 public class PluginTests {
-
 	@Test
-	public void baseline() {
-		System.out.println( "Here I am" );
-	}
+	@Project( "simple" )
+	public void basicTest(ProjectScope scope) {
+		final GradleRunner gradleRunner = scope.createGradleRunner( "processTestKitResources" );
+		verify( gradleRunner );
 
-	@Test
-	public void testBaseScope(TestKitBaseScope scope) {
-		assertThat( scope.getBaseDirectory().getAbsolutePath(), endsWith( "testkit" ) );
-
-		final TestKitProjectScope simpleProjectScope = scope.getProjectScope( "simple" );
-		final File projectBaseDirectory = simpleProjectScope.getProjectBaseDirectory();
-
-		assertThat( projectBaseDirectory.getAbsolutePath(), endsWith( "testkit/simple" ) );
-
-		final GradleRunner gradleRunner = simpleProjectScope.createGradleRunner( TestKitTask.DSL_NAME, "build" );
 		gradleRunner.build();
 	}
 
-	@Test
-	@TestKitProject( "simple" )
-	public void testProjectScope(TestKitProjectScope scope) {
-		assertThat( scope.getProjectBaseDirectory().getAbsolutePath(), endsWith( "testkit/simple" ) );
-
-		final GradleRunner gradleRunner = scope.createGradleRunner( "build" );
-		gradleRunner.build();
+	private void verify(GradleRunner gradleRunner) {
+		assertThat( gradleRunner.getProjectDir().getAbsolutePath(), endsWith( "/simple" ) );
 	}
 
 	@Test
-	@TestKitProject( "simple" )
-	public void testProjectScope(File projectBaseDirectoryAsFile) {
-		assertThat( projectBaseDirectoryAsFile.getAbsolutePath(), endsWith( "testkit/simple" ) );
+	public void implicitTestKitProjectTest(ProjectScope scope) {
+		final GradleRunner gradleRunner = scope.createGradleRunner( "processTestKitResources" );
+		verify( gradleRunner );
 
-		final GradleRunner gradleRunner = TestKitProjectScope.createGradleRunner( projectBaseDirectoryAsFile, "build" );
 		gradleRunner.build();
 	}
 }

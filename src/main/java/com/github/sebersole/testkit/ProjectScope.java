@@ -6,21 +6,22 @@ import java.util.Arrays;
 
 import org.gradle.testkit.runner.GradleRunner;
 
-public class TestKitProjectScope {
+/**
+ * Provides the test with access to a TestKit {@link GradleRunner}
+ * for the specified project.
+ *
+ * Manages a temp directory for the project for a specific test
+ */
+public class ProjectScope {
 	private final File projectBaseDirectory;
 
-	public TestKitProjectScope(File projectBaseDirectory) {
+	public ProjectScope(File projectBaseDirectory) {
 		this.projectBaseDirectory = projectBaseDirectory;
 	}
 
-	public TestKitProjectScope(TestKitBaseScope testKitBaseScope, String projectName) {
-		projectBaseDirectory = new File( testKitBaseScope.getBaseDirectory(), projectName );
-		assert projectBaseDirectory.exists();
-		assert projectBaseDirectory.isDirectory();
-	}
-
-	public File getProjectBaseDirectory() {
-		return projectBaseDirectory;
+	void release() {
+		// delete the directory after we are done with it
+		projectBaseDirectory.deleteOnExit();
 	}
 
 	public GradleRunner createGradleRunner(String... args) {

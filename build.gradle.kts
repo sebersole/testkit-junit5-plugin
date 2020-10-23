@@ -1,23 +1,29 @@
 import java.io.FileWriter
+import java.io.IOException
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.*
 
 plugins {
     java
     `java-gradle-plugin`
 
     // for publishing to portal
-    id( "com.gradle.plugin-publish" ) version "0.12.0"
-    id( "nu.studer.credentials" ) version "2.1"
+    id("com.gradle.plugin-publish") version "0.12.0"
+    id("nu.studer.credentials") version "2.1"
 
     // for publishing snapshots
-    id( "maven-publish" )
+    id("maven-publish")
     id("org.hibernate.build.maven-repo-auth") version "3.0.4"
 }
 
-val pluginId by extra( "com.github.sebersole.testkit-junit5" )
-val pluginVersion by extra( "0.1-SNAPSHOT" )
+val pluginId by extra("com.github.sebersole.testkit-junit5")
+val pluginVersion by extra("0.3-SNAPSHOT")
 
 group = "com.github.sebersole"
-version = pluginId
+version = pluginVersion
 
 configure<JavaPluginConvention> {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -25,7 +31,7 @@ configure<JavaPluginConvention> {
 
 gradlePlugin {
     plugins {
-        create( "testkit" ) {
+        create("testkit") {
             id = pluginId
             implementationClass = "com.github.sebersole.testkit.TestKitPlugin"
         }
@@ -35,10 +41,10 @@ gradlePlugin {
 pluginBundle {
     website = "https://github.com/hibernate/hibernate-orm/tree/master/tooling/hibernate-gradle-plugin"
     vcsUrl = "https://github.com/hibernate/hibernate-orm/tree/master/tooling/hibernate-gradle-plugin"
-    tags = arrayListOf( "gradle", "testkit", "sebersole" )
+    tags = arrayListOf("gradle", "testkit", "sebersole")
 
     plugins {
-        getByName("testkit" ) {
+        getByName("testkit") {
             displayName = "Gradle TestKit Helper"
             description = "Plugin for easier integration of Gradle's TestKit plugin testing library"
         }
@@ -51,44 +57,82 @@ repositories {
 }
 
 dependencies {
-    val junitVersion by extra( "5.3.1" )
-    val hamcrestVersion by extra( "1.3" )
+    val junitVersion by extra("5.3.1")
+    val hamcrestVersion by extra("1.3")
 
-    implementation( group = "org.junit.jupiter", name = "junit-jupiter-api", version = junitVersion )
-    implementation( gradleTestKit() )
+    implementation(group = "org.junit.jupiter", name = "junit-jupiter-api", version = junitVersion)
+    implementation(gradleTestKit())
 
-    testImplementation( group = "org.hamcrest", name = "hamcrest-all", version = hamcrestVersion )
+    testImplementation(group = "org.hamcrest", name = "hamcrest-all", version = hamcrestVersion)
+    testImplementation(gradleTestKit())
 
-    testRuntimeOnly( group = "org.junit.jupiter", name = "junit-jupiter-engine", version = junitVersion )
+    testRuntimeOnly(group = "org.junit.jupiter", name = "junit-jupiter-engine", version = junitVersion)
 }
 
-tasks.test {
-    useJUnitPlatform()
+
+publishing {
+    publications {
+        create("testKitPlugin", MavenPublication::class) {
+            from(components.getByName("java"))
+        }
+    }
+    repositories {
+        maven("https://repository.jboss.org/nexus/content/repositories/snapshots") {
+            name = "jboss-snapshots-repository"
+        }
+    }
 }
 
 
 // ###########################################################################
 // we need what the plugin provides for our tests, but... chicken meet egg
-//      - so we do it by hand
+//      - so we have to do some of it by hand
 
-val taskName = "processTestKitProject"
-val testKitOutDirPath = "testkit"
-val testKitSrcDirPath = "src/test/testkit"
-
-val testKitOutDir = layout.buildDirectory.get().dir( testKitOutDirPath )
-val testKitSrcDir = layout.projectDirectory.dir( testKitSrcDirPath )
-
-dependencies {
-    testRuntimeOnly( files( testKitOutDir ) )
+tasks.test {
+    useJUnitPlatform()
 }
 
-tasks.register<Copy>( taskName ) {
-    from( testKitSrcDir )
-    into( testKitOutDir )
+tasks.processTestResources {
+    doLast {
+        // chicken-egg between this project and the TestKit project
+        // wrt timing.  the plugin itself works given the project
+        // layout, but we cannot tie in to the task-graph to generate
+        // this file - so do it manually here
+        generateMarkerFile( sourceSets.test.get(), project )
+    }
 }
 
-tasks.processTestResources.get().dependsOn( taskName )
 
+fun generateMarkerFile(sourceSet: SourceSet, project: Project) {
+    val resourcesDir = sourceSet.output.resourcesDir
+    val markerFile = File( resourcesDir, "testkit_locator.properties" )
+    prepareMarkerFile(markerFile, project)
+    val formatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+            .withLocale(Locale.ROOT)
+            .withZone(ZoneOffset.UTC)
+    val tmpDir: Directory = project.layout.buildDirectory.get().dir("tmp" ).dir( "testKit" )
+    try {
+        FileWriter(markerFile).use { writer ->
+            writer.appendln("## Used by tests to locate the TestKit projects dir during test execution via resource lookup" )
+            writer.appendln("## Generated @ " + formatter.format( Instant.now() ) )
+            writer.appendln("tmp-dir=" + tmpDir.asFile.absolutePath )
+            writer.flush()
+        }
+    } catch (e: IOException) {
+        throw IllegalStateException("Unable to open marker file output stream `" + markerFile.absolutePath + "`", e)
+    }
+}
+
+fun prepareMarkerFile(markerFile: File, project: Project) {
+    try {
+        val created = markerFile.createNewFile()
+        if (!created) {
+            project.logger.lifecycle("File creation failed, but with no exception")
+        }
+    } catch (e: IOException) {
+        throw IllegalStateException("Could not create marker file `" + markerFile.absolutePath + "`", e)
+    }
+}
 
 // ###########################################################################
 

@@ -10,14 +10,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * Simple marker interface for applying the proper JUnit extensions.  Tests can
- * simply apply the extensions directly if they prefer
+ * simply apply the extension directly if they prefer
  *
- * @see TestKitProject
- * @see TestKitBaseScope
+ * @see Project
+ * @see ProjectContainer
  */
 @Inherited
 @Target( ElementType.TYPE )
 @Retention( RetentionPolicy.RUNTIME )
-@ExtendWith( TestKitParameterResolver.class )
+@ExtendWith( TestKitJunitExtension.class )
 public @interface TestKit {
 }

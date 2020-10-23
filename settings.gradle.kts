@@ -3,9 +3,6 @@ pluginManagement {
         gradlePluginPortal()
 
         mavenCentral()
-        maven( "https://repository.jboss.org/nexus/content/repositories/snapshots" ) {
-            name = "jboss-snapshots-repository"
-        }
     }
 }
 
