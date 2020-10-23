@@ -5,6 +5,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.*
+import org.gradle.external.javadoc.CoreJavadocOptions
 
 plugins {
     java
@@ -20,7 +21,7 @@ plugins {
 }
 
 val pluginId by extra("com.github.sebersole.testkit-junit5")
-val pluginVersion by extra("0.3-SNAPSHOT")
+val pluginVersion by extra("0.9")
 
 group = "com.github.sebersole"
 version = pluginVersion
@@ -83,6 +84,8 @@ publishing {
     }
 }
 
+(tasks.javadoc.get().options as CoreJavadocOptions).addStringOption( "Xdoclint:none", "-quiet" )
+
 
 // ###########################################################################
 // we need what the plugin provides for our tests, but... chicken meet egg
@@ -101,7 +104,6 @@ tasks.processTestResources {
         generateMarkerFile( sourceSets.test.get(), project )
     }
 }
-
 
 fun generateMarkerFile(sourceSet: SourceSet, project: Project) {
     val resourcesDir = sourceSet.output.resourcesDir
