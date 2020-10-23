@@ -98,9 +98,10 @@ public class TestKitPlugin implements Plugin<Project> {
 			project.getLogger().lifecycle( "Checking buildscript classpath entry: {}", dependencyId );
 			if ( "com.github.sebersole".equals( dependencyId.getGroup() ) ) {
 				if ( "testkit-junit5-plugin".equals( dependencyId.getName() ) ) {
+
 					// we found this plugin's dependency... add it to the TestKit compile-classpath
-					project.getLogger().lifecycle( "  > Found testkit-junit5-plugin dependency : `{}`", dependencyId.toString() );
-					dependencyHandler.add( dependencies.getName(), dependencyId.toString() );
+					project.getLogger().lifecycle( "  > Found testkit-junit5-plugin dependency : `{}`", resolvedArtifact.getFile() );
+					dependencyHandler.add( dependencies.getName(), project.files( resolvedArtifact.getFile() ) );
 
 					break;
 				}
