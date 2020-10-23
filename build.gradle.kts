@@ -21,7 +21,7 @@ plugins {
 }
 
 val pluginId by extra("com.github.sebersole.testkit-junit5")
-val pluginVersion by extra("0.9")
+val pluginVersion by extra("1.0-SNAPSHOT")
 
 group = "com.github.sebersole"
 version = pluginVersion
