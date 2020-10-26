@@ -21,7 +21,7 @@ plugins {
 }
 
 val pluginId by extra("com.github.sebersole.testkit-junit5")
-val pluginVersion by extra("0.9.4" )
+val pluginVersion by extra("1.0-SNAPSHOT" )
 
 group = "com.github.sebersole"
 version = pluginVersion
@@ -96,7 +96,7 @@ tasks.test {
 }
 
 val generateMarkerFileTask = task( "generateMarkerFile" ) {
-    var markerFile = File( tasks.processTestResources.get().destinationDir, "testkit_locator.properties" )
+    val markerFile = File( tasks.processTestResources.get().destinationDir, "testkit_locator.properties" )
     inputs.files( tasks.processTestResources )
     outputs.file(markerFile)
 
