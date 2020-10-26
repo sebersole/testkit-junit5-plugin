@@ -46,12 +46,11 @@ public class TestKitJunitExtension implements ParameterResolver, AfterEachCallba
 			return extensionContext.getRequiredTestClass().getDeclaredAnnotation( Project.class );
 		}
 
-		if ( projectContainer.getProjectNames().size() == 1 ) {
-			final String singleProjectName = projectContainer.getProjectNames().iterator().next();
+		if ( projectContainer.getImplicitProjectName() != null ) {
 			return new Project() {
 				@Override
 				public String value() {
-					return singleProjectName;
+					return projectContainer.getImplicitProjectName();
 				}
 
 				@Override

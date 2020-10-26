@@ -19,6 +19,8 @@ import static com.github.sebersole.testkit.TestKitPlugin.TEST_KIT;
 public class ProjectContainer {
 	private final File projectBaseDir;
 	private final File tmpDir;
+	private final String implicitProjectName;
+
 	private final Random randomGenerator = new Random();
 
 	private final Set<String> projectNames;
@@ -31,12 +33,14 @@ public class ProjectContainer {
 
 		final String markerFilePath = markerFileUrl.getFile();
 		final File markerFile = new File( markerFilePath );
+		final Properties properties = loadProperties( markerFile );
 
-		tmpDir = extractTmpDir( markerFile );
+		tmpDir = extractTmpDir( properties );
 
 		this.projectBaseDir = markerFile.getParentFile();
 		verifyBaseDir( projectBaseDir );
 
+		String implicitProjectName = extractImplicitProjectName( properties );
 		final File[] projectDirectories = projectBaseDir.listFiles();
 		assert projectDirectories != null;
 		final Set<String> projectNames = new HashSet<>();
@@ -46,13 +50,32 @@ public class ProjectContainer {
 			}
 		}
 		this.projectNames = Collections.unmodifiableSet( projectNames );
+		if ( implicitProjectName == null && projectNames.size() == 1 ) {
+			implicitProjectName = projectNames.iterator().next();
+		}
+		this.implicitProjectName = implicitProjectName;
+	}
+
+	private String extractImplicitProjectName(Properties properties) {
+		return properties.getProperty( "testkit.implicit-project-name" );
 	}
 
 	public Set<String> getProjectNames() {
 		return projectNames;
 	}
 
-	private File extractTmpDir(File markerFile) {
+	public String getImplicitProjectName() {
+		return implicitProjectName;
+	}
+
+	private File extractTmpDir(Properties properties) {
+		final String tmpDirPath = properties.getProperty( "testkit.tmp-dir" );
+		final File tmpDir = new File( tmpDirPath );
+		tmpDir.mkdirs();
+		return tmpDir;
+	}
+
+	private Properties loadProperties(File markerFile) {
 		final Properties properties = new Properties();
 		try ( FileInputStream inputStream = new FileInputStream( markerFile ) ) {
 			properties.load( inputStream );
@@ -60,11 +83,7 @@ public class ProjectContainer {
 		catch (IOException e) {
 			throw new IllegalStateException( "Unable to read `" + MARKER_FILE_NAME + "`" );
 		}
-
-		final String tmpDirPath = properties.getProperty( "tmp-dir" );
-		final File tmpDir = new File( tmpDirPath );
-		tmpDir.mkdirs();
-		return tmpDir;
+		return properties;
 	}
 
 	private URL locateMarker() {

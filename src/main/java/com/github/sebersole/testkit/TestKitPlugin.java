@@ -46,6 +46,8 @@ public class TestKitPlugin implements Plugin<Project> {
 	public void apply(Project project) {
 		project.getPlugins().apply( JavaGradlePluginPlugin.class );
 
+		final TestKitSpec testKitSpec = project.getExtensions().create( TestKitSpec.DSL_NAME, TestKitSpec.class, project );
+
 		// creates Configurations and primes with normal dependencies
 		final Configuration compileDependencies = prepareCompileDependencies( project );
 		final Configuration runtimeDependencies = prepareRuntimeDependencies( project );
@@ -57,22 +59,31 @@ public class TestKitPlugin implements Plugin<Project> {
 		sourceSet.setCompileClasspath( sourceSet.getCompileClasspath().plus( compileDependencies ) );
 		sourceSet.setRuntimeClasspath( sourceSet.getRuntimeClasspath().plus( runtimeDependencies ).plus( sourceSet.getOutput() ) );
 
-		// create the TestKit test task
+		final Task mainTestTask = project.getTasks().getByName( "test" );
+
+		// create the TestKit tasks
+		final Task copyTask = project.getTasks().getByName( sourceSet.getTaskName( "process", "Resources" ) );
+		final Task compileTask = project.getTasks().getByName( sourceSet.getTaskName( "compile", "Java" ) );
 		final Test testKitTest = project.getTasks().create( TEST_TASK_NAME, Test.class );
 		testKitTest.setTestClassesDirs( sourceSet.getOutput().getClassesDirs() );
 		testKitTest.setClasspath( sourceSet.getRuntimeClasspath() );
-		testKitTest.dependsOn( "test" );
-		final Task copyTask = project.getTasks().getByName( sourceSet.getTaskName( "process", "Resources" ) );
+
+		copyTask.dependsOn( compileDependencies );
+		copyTask.dependsOn( mainTestTask );
+		compileTask.dependsOn( mainTestTask );
 		testKitTest.dependsOn( copyTask );
-		final Task compileTask = project.getTasks().getByName( sourceSet.getTaskName( "compile", "Java" ) );
 		testKitTest.dependsOn( compileTask );
+		testKitTest.dependsOn( "pluginDescriptors" );
+		testKitTest.dependsOn( "pluginUnderTestMetadata" );
+
+		project.getTasks().getByName( "check" ).dependsOn( testKitTest );
 
 		// the plugin functionality is based on JUnit5 so force that issue
 		project.getLogger().lifecycle( "Forcing use of JUnit 5 platform for `testKitTest` task" );
 		testKitTest.useJUnitPlatform();
 
 		// generate the marker file after processing TestKit resources (project container)
-		copyTask.doLast( (task) -> generateMarkerFile( sourceSet, project ) );
+		copyTask.doLast( (task) -> generateMarkerFile( sourceSet, testKitSpec, project ) );
 
 	}
 
@@ -124,7 +135,7 @@ public class TestKitPlugin implements Plugin<Project> {
 		return dependencies;
 	}
 
-	private static void generateMarkerFile(SourceSet sourceSet, Project project) {
+	private static void generateMarkerFile(SourceSet sourceSet, TestKitSpec testKitSpec, Project project) {
 		final File resourcesDir = sourceSet.getOutput().getResourcesDir();
 		final File markerFile = new File( resourcesDir, MARKER_FILE_NAME );
 
@@ -140,7 +151,9 @@ public class TestKitPlugin implements Plugin<Project> {
 			writer.write( Character.LINE_SEPARATOR );
 			writer.write( "## Generated : " + formatter.format( Instant.now() ) );
 			writer.write( Character.LINE_SEPARATOR );
-			writer.write( "tmp-dir=" + tmpDir.getAsFile().getAbsolutePath() );
+			writer.write( "testkit.tmp-dir=" + tmpDir.getAsFile().getAbsolutePath() );
+			writer.write( Character.LINE_SEPARATOR );
+			writer.write( "testkit.implicit-project-name=" + testKitSpec.getTestKitImplicitProject().get() );
 			writer.write( Character.LINE_SEPARATOR );
 			writer.flush();
 		}
