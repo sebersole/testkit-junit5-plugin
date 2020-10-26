@@ -19,6 +19,7 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.Directory;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.testing.Test;
@@ -38,6 +39,8 @@ public class TestKitPlugin implements Plugin<Project> {
 	public static final String TEST_TASK_NAME = TEST_KIT + "Test";
 
 	public static final String MARKER_FILE_NAME = "testkit_locator.properties";
+	public static final String TESTKIT_TMP_DIR = "testkit.tmp-dir";
+	public static final String TESTKIT_IMPL_PROJ_NAME = "testkit.implicit-project-name";
 
 	public static final String JUNIT_VERSION = "5.3.1";
 	public static final String HAMCREST_VERSION = "1.3";
@@ -54,6 +57,8 @@ public class TestKitPlugin implements Plugin<Project> {
 
 		// create the TestKit SourceSet
 		final JavaPluginConvention javaPluginConvention = project.getConvention().findPlugin( JavaPluginConvention.class );
+		assert javaPluginConvention != null;
+
 		final SourceSetContainer sourceSetContainer = javaPluginConvention.getSourceSets();
 		final SourceSet sourceSet = sourceSetContainer.create( TEST_KIT );
 		sourceSet.setCompileClasspath( sourceSet.getCompileClasspath().plus( compileDependencies ) );
@@ -62,7 +67,7 @@ public class TestKitPlugin implements Plugin<Project> {
 		final Task mainTestTask = project.getTasks().getByName( "test" );
 
 		// create the TestKit tasks
-		final Task copyTask = project.getTasks().getByName( sourceSet.getTaskName( "process", "Resources" ) );
+		final Copy copyTask = (Copy) project.getTasks().getByName( sourceSet.getTaskName( "process", "Resources" ) );
 		final Task compileTask = project.getTasks().getByName( sourceSet.getTaskName( "compile", "Java" ) );
 		final Test testKitTest = project.getTasks().create( TEST_TASK_NAME, Test.class );
 		testKitTest.setTestClassesDirs( sourceSet.getOutput().getClassesDirs() );
@@ -82,9 +87,17 @@ public class TestKitPlugin implements Plugin<Project> {
 		project.getLogger().lifecycle( "Forcing use of JUnit 5 platform for `testKitTest` task" );
 		testKitTest.useJUnitPlatform();
 
-		// generate the marker file after processing TestKit resources (project container)
-		copyTask.doLast( (task) -> generateMarkerFile( sourceSet, testKitSpec, project ) );
+		final File resourcesDir = sourceSet.getOutput().getResourcesDir();
+		final File markerFile = new File( resourcesDir, MARKER_FILE_NAME );
 
+		// generate the marker file after processing TestKit resources (project container)
+		final Task generateMarkerFileTask = project.task( "generateMarkerFile", task -> generateMarkerFile( markerFile, testKitSpec, project ) );
+		generateMarkerFileTask.setDescription( "Generates a marker file used to locate the TestKit projects at test runtime" );
+		generateMarkerFileTask.setGroup( "testkit-junit5" );
+		generateMarkerFileTask.getInputs().files( copyTask );
+		generateMarkerFileTask.getOutputs().file( markerFile );
+
+		copyTask.finalizedBy( generateMarkerFileTask );
 	}
 
 	private static Configuration prepareCompileDependencies(Project project) {
@@ -106,12 +119,12 @@ public class TestKitPlugin implements Plugin<Project> {
 		final Set<ResolvedArtifact> resolvedArtifacts = buildScriptClasspath.getResolvedConfiguration().getResolvedArtifacts();
 		for ( ResolvedArtifact resolvedArtifact : resolvedArtifacts ) {
 			final ModuleVersionIdentifier dependencyId = resolvedArtifact.getModuleVersion().getId();
-			project.getLogger().lifecycle( "Checking buildscript classpath entry: {}", dependencyId );
+			project.getLogger().debug( "Checking buildscript classpath entry: {}", dependencyId );
 			if ( "com.github.sebersole".equals( dependencyId.getGroup() ) ) {
 				if ( "testkit-junit5-plugin".equals( dependencyId.getName() ) ) {
 
 					// we found this plugin's dependency... add it to the TestKit compile-classpath
-					project.getLogger().lifecycle( "  > Found testkit-junit5-plugin dependency : `{}`", resolvedArtifact.getFile() );
+					project.getLogger().debug( "  > Found testkit-junit5-plugin dependency : `{}`", resolvedArtifact.getFile() );
 					dependencyHandler.add( dependencies.getName(), project.files( resolvedArtifact.getFile() ) );
 
 					break;
@@ -135,9 +148,8 @@ public class TestKitPlugin implements Plugin<Project> {
 		return dependencies;
 	}
 
-	private static void generateMarkerFile(SourceSet sourceSet, TestKitSpec testKitSpec, Project project) {
-		final File resourcesDir = sourceSet.getOutput().getResourcesDir();
-		final File markerFile = new File( resourcesDir, MARKER_FILE_NAME );
+	private static void generateMarkerFile(File markerFile, TestKitSpec testKitSpec, Project project) {
+		project.getLogger().lifecycle( "Generating TestKit marker file - {}", markerFile.getAbsolutePath() );
 
 		prepareMarkerFile( markerFile, project );
 
@@ -151,9 +163,9 @@ public class TestKitPlugin implements Plugin<Project> {
 			writer.write( Character.LINE_SEPARATOR );
 			writer.write( "## Generated : " + formatter.format( Instant.now() ) );
 			writer.write( Character.LINE_SEPARATOR );
-			writer.write( "testkit.tmp-dir=" + tmpDir.getAsFile().getAbsolutePath() );
+			writer.write( TESTKIT_TMP_DIR + "=" + tmpDir.getAsFile().getAbsolutePath() );
 			writer.write( Character.LINE_SEPARATOR );
-			writer.write( "testkit.implicit-project-name=" + testKitSpec.getTestKitImplicitProject().get() );
+			writer.write( TESTKIT_IMPL_PROJ_NAME + "=" + testKitSpec.getTestKitImplicitProject().getOrElse( "" ) );
 			writer.write( Character.LINE_SEPARATOR );
 			writer.flush();
 		}
@@ -164,6 +176,8 @@ public class TestKitPlugin implements Plugin<Project> {
 
 	private static void prepareMarkerFile(File markerFile, Project project) {
 		try {
+			//noinspection ResultOfMethodCallIgnored
+			markerFile.getParentFile().mkdirs();
 			final boolean created = markerFile.createNewFile();
 			if ( ! created ) {
 				project.getLogger().lifecycle( "File creation failed, but with no exception" );

@@ -11,6 +11,8 @@ import java.util.Random;
 import java.util.Set;
 
 import static com.github.sebersole.testkit.TestKitPlugin.MARKER_FILE_NAME;
+import static com.github.sebersole.testkit.TestKitPlugin.TESTKIT_IMPL_PROJ_NAME;
+import static com.github.sebersole.testkit.TestKitPlugin.TESTKIT_TMP_DIR;
 import static com.github.sebersole.testkit.TestKitPlugin.TEST_KIT;
 
 /**
@@ -37,7 +39,7 @@ public class ProjectContainer {
 
 		tmpDir = extractTmpDir( properties );
 
-		this.projectBaseDir = markerFile.getParentFile();
+		projectBaseDir = markerFile.getParentFile();
 		verifyBaseDir( projectBaseDir );
 
 		String implicitProjectName = extractImplicitProjectName( properties );
@@ -56,34 +58,12 @@ public class ProjectContainer {
 		this.implicitProjectName = implicitProjectName;
 	}
 
-	private String extractImplicitProjectName(Properties properties) {
-		return properties.getProperty( "testkit.implicit-project-name" );
-	}
-
 	public Set<String> getProjectNames() {
 		return projectNames;
 	}
 
 	public String getImplicitProjectName() {
 		return implicitProjectName;
-	}
-
-	private File extractTmpDir(Properties properties) {
-		final String tmpDirPath = properties.getProperty( "testkit.tmp-dir" );
-		final File tmpDir = new File( tmpDirPath );
-		tmpDir.mkdirs();
-		return tmpDir;
-	}
-
-	private Properties loadProperties(File markerFile) {
-		final Properties properties = new Properties();
-		try ( FileInputStream inputStream = new FileInputStream( markerFile ) ) {
-			properties.load( inputStream );
-		}
-		catch (IOException e) {
-			throw new IllegalStateException( "Unable to read `" + MARKER_FILE_NAME + "`" );
-		}
-		return properties;
 	}
 
 	private URL locateMarker() {
@@ -100,9 +80,34 @@ public class ProjectContainer {
 		return null;
 	}
 
+	private Properties loadProperties(File markerFile) {
+		final Properties properties = new Properties();
+		try ( FileInputStream inputStream = new FileInputStream( markerFile ) ) {
+			properties.load( inputStream );
+		}
+		catch (IOException e) {
+			throw new IllegalStateException( "Unable to read `" + MARKER_FILE_NAME + "`" );
+		}
+		return properties;
+	}
+
 	private static void verifyBaseDir(File baseDirectory) {
 		assert baseDirectory.exists();
 		assert baseDirectory.isDirectory();
+	}
+
+	private File extractTmpDir(Properties properties) {
+		final String tmpDirPath = properties.getProperty( TESTKIT_TMP_DIR );
+		if ( tmpDirPath == null ) {
+			throw new IllegalStateException( "Could not find `" + TESTKIT_TMP_DIR + "` in marker file" );
+		}
+		final File tmpDir = new File( tmpDirPath );
+		tmpDir.mkdirs();
+		return tmpDir;
+	}
+
+	private String extractImplicitProjectName(Properties properties) {
+		return properties.getProperty( TESTKIT_IMPL_PROJ_NAME );
 	}
 
 	public ProjectScope getProjectScope(String projectName) {

@@ -95,15 +95,17 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.processTestResources {
+val generateMarkerFileTask = task( "generateMarkerFile" ) {
+    var markerFile = File( tasks.processTestResources.get().destinationDir, "testkit_locator.properties" )
+    inputs.files( tasks.processTestResources )
+    outputs.file(markerFile)
+
     doLast {
-        // chicken-egg between this project and the TestKit project
-        // wrt timing.  the plugin itself works given the project
-        // layout, but we cannot tie in to the task-graph to generate
-        // this file - so do it manually here
         generateMarkerFile( sourceSets.test.get(), project )
     }
 }
+
+tasks.processTestResources.get().finalizedBy( generateMarkerFileTask )
 
 fun generateMarkerFile(sourceSet: SourceSet, project: Project) {
     val resourcesDir = sourceSet.output.resourcesDir
@@ -117,7 +119,8 @@ fun generateMarkerFile(sourceSet: SourceSet, project: Project) {
         FileWriter(markerFile).use { writer ->
             writer.appendln("## Used by tests to locate the TestKit projects dir during test execution via resource lookup" )
             writer.appendln("## Generated @ " + formatter.format( Instant.now() ) )
-            writer.appendln("tmp-dir=" + tmpDir.asFile.absolutePath )
+            writer.appendln("testkit.tmp-dir=" + tmpDir.asFile.absolutePath )
+            writer.appendln("testkit.implicit-project-name=simple" )
             writer.flush()
         }
     } catch (e: IOException) {
