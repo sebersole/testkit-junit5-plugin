@@ -19,6 +19,10 @@ public class ProjectScope {
 		this.projectBaseDirectory = projectBaseDirectory;
 	}
 
+	public File getProjectBaseDirectory() {
+		return projectBaseDirectory;
+	}
+
 	void release() {
 		// delete the directory after we are done with it
 		projectBaseDirectory.deleteOnExit();
@@ -35,6 +39,7 @@ public class ProjectScope {
 		return GradleRunner.create()
 				.withPluginClasspath()
 				.withDebug( true )
+				.forwardOutput()
 				.withProjectDir( projectBaseDir )
 				.withArguments( arguments );
 	}

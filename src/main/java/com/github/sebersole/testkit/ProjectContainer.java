@@ -66,6 +66,14 @@ public class ProjectContainer {
 		return implicitProjectName;
 	}
 
+	public File getProjectBaseDir() {
+		return projectBaseDir;
+	}
+
+	public File getTmpDir() {
+		return tmpDir;
+	}
+
 	private URL locateMarker() {
 		final URL withoutSlash = ProjectScope.class.getResource( MARKER_FILE_NAME );
 		if ( withoutSlash != null ) {

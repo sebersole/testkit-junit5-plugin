@@ -47,6 +47,8 @@ public class TestKitPlugin implements Plugin<Project> {
 
 	@Override
 	public void apply(Project project) {
+		project.getLogger().lifecycle( "Applying TestKitPlugin" );
+
 		project.getPlugins().apply( JavaGradlePluginPlugin.class );
 
 		final TestKitSpec testKitSpec = project.getExtensions().create( TestKitSpec.DSL_NAME, TestKitSpec.class, project );
@@ -67,9 +69,18 @@ public class TestKitPlugin implements Plugin<Project> {
 		final Task mainTestTask = project.getTasks().getByName( "test" );
 
 		// create the TestKit tasks
+
 		final Copy copyTask = (Copy) project.getTasks().getByName( sourceSet.getTaskName( "process", "Resources" ) );
+		copyTask.setGroup( TEST_KIT );
+		copyTask.setDescription( "Copies the TestKit projects" );
+
 		final Task compileTask = project.getTasks().getByName( sourceSet.getTaskName( "compile", "Java" ) );
+		compileTask.setGroup( TEST_KIT );
+		compileTask.setDescription( "Compiles the TestKit sources" );
+
 		final Test testKitTest = project.getTasks().create( TEST_TASK_NAME, Test.class );
+		compileTask.setGroup( TEST_KIT );
+		compileTask.setDescription( "Executes the TestKit tests" );
 		testKitTest.setTestClassesDirs( sourceSet.getOutput().getClassesDirs() );
 		testKitTest.setClasspath( sourceSet.getRuntimeClasspath() );
 
@@ -91,13 +102,13 @@ public class TestKitPlugin implements Plugin<Project> {
 		final File markerFile = new File( resourcesDir, MARKER_FILE_NAME );
 
 		// generate the marker file after processing TestKit resources (project container)
-		final Task generateMarkerFileTask = project.task( "generateMarkerFile", task -> generateMarkerFile( markerFile, testKitSpec, project ) );
-		generateMarkerFileTask.setDescription( "Generates a marker file used to locate the TestKit projects at test runtime" );
-		generateMarkerFileTask.setGroup( "testkit-junit5" );
-		generateMarkerFileTask.getInputs().files( copyTask );
-		generateMarkerFileTask.getOutputs().file( markerFile );
+		copyTask.getOutputs().file( markerFile );
+		copyTask.doLast( task -> generateMarkerFile( markerFile, testKitSpec, project ) );
 
-		copyTask.finalizedBy( generateMarkerFileTask );
+		// NOTE : writing the marker file to the resources output dir causes the ProcessResources
+		// 		task that wrote there to become out-of-date
+		// todo : fix this ^^
+		//		- write to another directory and adjust the "downstream classpaths"
 	}
 
 	private static Configuration prepareCompileDependencies(Project project) {
@@ -165,7 +176,7 @@ public class TestKitPlugin implements Plugin<Project> {
 			writer.write( Character.LINE_SEPARATOR );
 			writer.write( TESTKIT_TMP_DIR + "=" + tmpDir.getAsFile().getAbsolutePath() );
 			writer.write( Character.LINE_SEPARATOR );
-			writer.write( TESTKIT_IMPL_PROJ_NAME + "=" + testKitSpec.getTestKitImplicitProject().getOrElse( "" ) );
+			writer.write( TESTKIT_IMPL_PROJ_NAME + "=" + testKitSpec.getImplicitProjectName().getOrElse( "" ) );
 			writer.write( Character.LINE_SEPARATOR );
 			writer.flush();
 		}
@@ -176,8 +187,11 @@ public class TestKitPlugin implements Plugin<Project> {
 
 	private static void prepareMarkerFile(File markerFile, Project project) {
 		try {
-			//noinspection ResultOfMethodCallIgnored
-			markerFile.getParentFile().mkdirs();
+			final boolean dirsCreated = markerFile.getParentFile().mkdirs();
+			if ( ! dirsCreated ) {
+				project.getLogger().lifecycle( "Marker file directory not created" );
+			}
+
 			final boolean created = markerFile.createNewFile();
 			if ( ! created ) {
 				project.getLogger().lifecycle( "File creation failed, but with no exception" );

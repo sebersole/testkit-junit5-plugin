@@ -40,9 +40,9 @@ gradlePlugin {
 }
 
 pluginBundle {
-    website = "https://github.com/hibernate/hibernate-orm/tree/master/tooling/hibernate-gradle-plugin"
-    vcsUrl = "https://github.com/hibernate/hibernate-orm/tree/master/tooling/hibernate-gradle-plugin"
-    tags = arrayListOf("gradle", "testkit", "sebersole")
+    website = "https://github.com/sebersole/testkit-junit5-plugin"
+    vcsUrl = "https://github.com/sebersole/testkit-junit5-plugin"
+    tags = arrayListOf("gradle", "testkit", "testing", "sebersole")
 
     plugins {
         getByName("testkit") {
@@ -88,8 +88,8 @@ publishing {
 
 
 // ###########################################################################
-// we need what the plugin provides for our tests, but... chicken meet egg
-//      - so we have to do some of it by hand
+// we need what the plugin provides for our tests, but... chicken meet egg, so
+// we have to do some of it by hand
 
 tasks.test {
     useJUnitPlatform()

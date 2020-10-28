@@ -1,6 +1,6 @@
-# testkit-junit5-plugin
+= testkit-junit5-plugin
 
-Defines support for managing TestKit test projects, as well as some even cooler support for JUnit 5 tests
+Defines support for managing TestKit test projects along with JUnit 5 testing
 
 ```
 plugins {
@@ -8,47 +8,114 @@ plugins {
 }
 ```
 
-The plugin accepts no configuration.
+NOTE: Applying this plugin enforces the use of JUnit 5 (`junitPlatform`) for testing
 
-At configuration time, the plugin has the following effects:
 
-* Creation of TestKit specific Configurations:
-  ** `testKitCompileClasspath`
-    *** extends from `configurations.testCompileClasspath`
-    *** automatically adds `gradleApi()`
-    *** automatically adds `gradleTestKit()`
-    *** automatically adds `hamcrest-all`
-    *** automatically adds `junit-jupiter-api`
-    *** automatically adds `junit-jupiter-params`
-  ** `testKitRuntimeClasspath`
-    *** extends from `configurations.testKitCompileClasspath`
-    *** extends from `configurations.testRuntimeClasspath`
-    *** automatically adds `sourceSets.testKit.output`
-    *** automatically adds `junit-jupiter-engine`
-* Creation of a `testKit` source set
-  ** implied task : `compileTestKitJava`
-  ** implied task : `processTestKitResources`
-  ** compile classpath : `configurations.testKitCompileClasspath`
-  ** runtime classpath : `configurations.testKitRuntimeClasspath`
-* Creation of a `testKitTest` Test task
-  ** classpath : `sourceSets.testKit.runtimeClasspath`
-  ** dependsOn : `tasks.test`
-  ** dependsOn : `tasks.compileTestKitJava`
-  ** dependsOn : `tasks.processTestKitResources`
-* Forces use of the JUnit Platform (JUnit 5) testing engine
+== Dependency Configurations
 
-At build time, the plugin has the following effects:
+The plugin defines 2 Configurations:
 
-* When `tasks.processTestKitResources` triggers a `doLast` action to generate
-  a "marker" file into the `sourceSets.testKit.output.resourcesDir`. The marker
-  file allows testing to locate the directory to which `src/testkit/resources`
-  was copied via classpath resource lookup.  This file also contains an entry
-  with the path of a temporary directory which can be used to create
-  TestKit projects isolated for each test method.
-* Creates and maintains a `ProjectContainer` reference as part of the JUnit
-  lifecycle
-* For tests defining `ProjectScope` parameter, `TestKitJunitExtension` creates
-  and injects a `ProjectScope` instance.  This includes:
-  ** creating a new directory in the "temporary directory" to act as the `GradleRunner#projectDirectory`
-  ** copies the `$buildDir/resources/testKit/{projectName}` directory to `$buildDir/tmp/testKit/{random}/{projectName}`
+testKitCompileClasspath::
+Classpath used to compile the TestKit test classes.  It extends from `configurations.testCompileClasspath`.  The following dependencies are automatically added:
+* `gradleApi()`
+* `gradleTestKit()`
+* `hamcrest-all`
+* `junit-jupiter-api`
+* `junit-jupiter-params`
+
+testKitRuntimeClasspath::
+Classpath used to run the TestKit tests.  It extends from `configurations.testKitCompileClasspath` as well as `configurations.testRuntimeClasspath`.
+`junit-jupiter-engine` is automatically added as a dependency.
+
+
+== SourceSet
+
+The plugin applies a new SourceSet named `testKit`
+
+```
+plugin-project
+    \- src
+        |- main (normal plugin stuff)
+        |- ...
+        \- testKit
+            |- java (contains test classes using TestKit)
+            \- resources (contains the TestKit projects)
+                |- simple (a TestKit project named `simple`)
+                    |- ...
+                    |- build.gradle
+                    \- settings.gradle
+```
+
+There can be more than one TestKit test project also:
+
+```
+testKit
+   |- java (contains test classes using TestKit)
+   \- resources (contains the TestKit projects)
+       |- simple (a TestKit project named `simple`)
+           \- ...
+       |- more-complex (a TestKit project named `more-complex`)
+       \- ...
+```
+
+
+== Tasks
+
+processTestKitResources::Copies the TestKit projects defined in `src/testKit/resources` into the
+`$buildDir/resources/testKit` directory and generates a file there named `testkit_locator.properties`.
+This file will be used by the JUnit integration during tests.
+
+compileTestKitJava::Compiles the test classes in `src/testKit/java`
+
+testKitTest::Runs the tests compiled by `compileTestKitJava`
+
+
+== Testing
+
+As mentioned before, the `testKitTest` task triggers execution of all TestKit tests.
+
+The plugin integrates with JUnit 5 and leverages it wonderful extension mechanisms, especially
+the ability to inject a `ProjectScope` into the test.  This `ProjectScope` is a delegate that helps
+the test perform tests on a TestKit project without having to worry about physical file/directory
+handling.
+
+```
+class MyPluginTest {
+  @Test
+  public void firstTest(ProjectScope scope) {
+    final GradleRunner gradleRunner = scope.createGradleRunner( ... );
+    // use GradleRunner like you normally would
+  }
+}
+```
+
+If there is only a single TestKit project, then there is no additional configuration needed.  However, if there are
+multiple, the plugin needs to know which to inject.  This can happen in 2 different ways.
+
+First, an annotation can be used to indicate which project to use.  This can be a method annotation:
+
+```
+class MyPluginTest {
+  @Test
+  @Project( "simple" )
+  public void firstTest(ProjectScope scope) { ... }
+}
+```
+
+or a parameter annotation
+
+```
+class MyPluginTest {
+  @Test
+  public void firstTest(@Project( "simple" ) ProjectScope scope) { ... }
+}
+```
+
+The other way is to configure an "implicit" project on the plugin DSL:
+
+```
+testKit {
+  implicitProject = 'simple'
+}
+```
 

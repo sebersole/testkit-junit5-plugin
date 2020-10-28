@@ -11,22 +11,22 @@ import org.gradle.api.provider.Property;
 public class TestKitSpec {
 	public static final String DSL_NAME = "testKit";
 
-	private final Property<String> testKitImplicitProject;
+	private final Property<String> implicitProjectName;
 
 	@Inject
 	public TestKitSpec(Project project) {
-		this.testKitImplicitProject = project.getObjects().property( String.class );
+		this.implicitProjectName = project.getObjects().property( String.class );
 	}
 
-	public Property<String> getTestKitImplicitProject() {
-		return testKitImplicitProject;
+	public Property<String> getImplicitProjectName() {
+		return implicitProjectName;
 	}
 
 	public void implicitProject(String projectName) {
-		testKitImplicitProject.set( projectName );
+		implicitProjectName.set( projectName );
 	}
 
 	public void setImplicitProject(String projectName) {
-		testKitImplicitProject.set( projectName );
+		implicitProjectName.set( projectName );
 	}
 }
