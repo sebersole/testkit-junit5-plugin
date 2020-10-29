@@ -53,6 +53,8 @@ public class TestKitPlugin implements Plugin<Project> {
 
 		final TestKitSpec testKitSpec = project.getExtensions().create( TestKitSpec.DSL_NAME, TestKitSpec.class, project );
 
+		final Test mainTestTask = (Test) project.getTasks().getByName( "test" );
+
 		// creates Configurations and primes with normal dependencies
 		final Configuration compileDependencies = prepareCompileDependencies( project );
 		final Configuration runtimeDependencies = prepareRuntimeDependencies( project );
@@ -63,10 +65,9 @@ public class TestKitPlugin implements Plugin<Project> {
 
 		final SourceSetContainer sourceSetContainer = javaPluginConvention.getSourceSets();
 		final SourceSet sourceSet = sourceSetContainer.create( TEST_KIT );
-		sourceSet.setCompileClasspath( sourceSet.getCompileClasspath().plus( compileDependencies ) );
+		sourceSet.setCompileClasspath( sourceSet.getCompileClasspath().plus( compileDependencies ).plus( mainTestTask.getClasspath() ) );
 		sourceSet.setRuntimeClasspath( sourceSet.getRuntimeClasspath().plus( runtimeDependencies ).plus( sourceSet.getOutput() ) );
 
-		final Task mainTestTask = project.getTasks().getByName( "test" );
 
 		// create the TestKit tasks
 
