@@ -119,7 +119,7 @@ fun generateMarkerFile(sourceSet: SourceSet, project: Project) {
         FileWriter(markerFile).use { writer ->
             writer.appendln("## Used by tests to locate the TestKit projects dir during test execution via resource lookup" )
             writer.appendln("## Generated @ " + formatter.format( Instant.now() ) )
-            writer.appendln("testkit.tmp-dir=" + tmpDir.asFile.absolutePath )
+            writer.appendln("testkit.tmp-dir=" + tmpDir.asFile.absolutePath.replace("\\","\\\\") )
             writer.appendln("testkit.implicit-project-name=simple" )
             writer.flush()
         }
