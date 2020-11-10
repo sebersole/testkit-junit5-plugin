@@ -4,8 +4,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.*
-import org.gradle.external.javadoc.CoreJavadocOptions
+import java.util.Locale
 
 plugins {
     java
@@ -21,7 +20,7 @@ plugins {
 }
 
 val pluginId by extra("com.github.sebersole.testkit-junit5")
-val pluginVersion by extra("1.0.1" )
+val pluginVersion by extra("1.1-SNAPSHOT" )
 
 group = "com.github.sebersole"
 version = pluginVersion
