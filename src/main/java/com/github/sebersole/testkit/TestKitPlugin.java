@@ -175,7 +175,7 @@ public class TestKitPlugin implements Plugin<Project> {
 			writer.write( Character.LINE_SEPARATOR );
 			writer.write( "## Generated : " + formatter.format( Instant.now() ) );
 			writer.write( Character.LINE_SEPARATOR );
-			writer.write( TESTKIT_TMP_DIR + "=" + tmpDir.getAsFile().getAbsolutePath() );
+			writer.write( TESTKIT_TMP_DIR + "=" + tmpDir.getAsFile().getAbsolutePath().replace("\\","\\\\" ) );
 			writer.write( Character.LINE_SEPARATOR );
 			writer.write( TESTKIT_IMPL_PROJ_NAME + "=" + testKitSpec.getImplicitProjectName().getOrElse( "" ) );
 			writer.write( Character.LINE_SEPARATOR );
