@@ -41,6 +41,7 @@ public class ProjectContainer {
 
 		projectBaseDir = markerFile.getParentFile();
 		verifyBaseDir( projectBaseDir );
+		System.out.printf( "TestKit project directory : %s\n", projectBaseDir.getAbsolutePath() );
 
 		String implicitProjectName = extractImplicitProjectName( properties );
 		final File[] projectDirectories = projectBaseDir.listFiles();
@@ -127,6 +128,7 @@ public class ProjectContainer {
 		// make a new directory in the tmpDir for the test
 		final File projectDir = new File( new File( tmpDir, TEST_KIT + randomGenerator.nextInt() ), projectName );
 		projectDir.mkdirs();
+
 
 		// Copy the project from the source dir to the temporary, isolated one
 		DirectoryCopier.copy( projectSourceDir.toPath(), projectDir.toPath() );
