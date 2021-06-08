@@ -7,7 +7,7 @@ import java.time.format.FormatStyle
 import java.util.Locale
 
 plugins {
-    java
+    `java-library`
     `java-gradle-plugin`
 
     // for publishing to portal
@@ -59,6 +59,8 @@ repositories {
 dependencies {
     val junitVersion by extra("5.3.1")
     val hamcrestVersion by extra("1.3")
+
+    api( gradleApi() )
 
     implementation(group = "org.junit.jupiter", name = "junit-jupiter-api", version = junitVersion)
     implementation(gradleTestKit())

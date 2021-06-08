@@ -10,6 +10,7 @@ import java.time.format.FormatStyle;
 import java.util.Locale;
 import java.util.Set;
 
+import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -18,7 +19,9 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -47,8 +50,6 @@ public class TestKitPlugin implements Plugin<Project> {
 
 	@Override
 	public void apply(Project project) {
-		project.getLogger().lifecycle( "Applying TestKitPlugin" );
-
 		project.getPlugins().apply( JavaGradlePluginPlugin.class );
 
 		final TestKitSpec testKitSpec = project.getExtensions().create( TestKitSpec.DSL_NAME, TestKitSpec.class, project );
@@ -67,7 +68,6 @@ public class TestKitPlugin implements Plugin<Project> {
 		final SourceSet sourceSet = sourceSetContainer.create( TEST_KIT );
 		sourceSet.setCompileClasspath( sourceSet.getCompileClasspath().plus( compileDependencies ).plus( mainTestTask.getClasspath() ) );
 		sourceSet.setRuntimeClasspath( sourceSet.getRuntimeClasspath().plus( runtimeDependencies ).plus( sourceSet.getOutput() ) );
-
 
 		// create the TestKit tasks
 
@@ -95,16 +95,25 @@ public class TestKitPlugin implements Plugin<Project> {
 
 		project.getTasks().getByName( "check" ).dependsOn( testKitTest );
 
-		// the plugin functionality is based on JUnit5 so force that issue
-		project.getLogger().lifecycle( "Forcing use of JUnit 5 platform for `testKitTest` task" );
+		// the plugin functionality is based on JUnit5...
 		testKitTest.useJUnitPlatform();
 
-		final File resourcesDir = sourceSet.getOutput().getResourcesDir();
-		final File markerFile = new File( resourcesDir, MARKER_FILE_NAME );
+		sourceSet.getResources().getDestinationDirectory().convention(
+				project.getLayout().getBuildDirectory().dir( "resources/testKit" )
+		);
+
+		final Provider<RegularFile> markerFile = sourceSet.getResources().getDestinationDirectory().file( MARKER_FILE_NAME );
 
 		// generate the marker file after processing TestKit resources (project container)
 		copyTask.getOutputs().file( markerFile );
-		copyTask.doLast( task -> generateMarkerFile( markerFile, testKitSpec, project ) );
+		copyTask.doLast(
+				new Action<Task>() {
+					@Override
+					public void execute(Task task) {
+						generateMarkerFile( markerFile, testKitSpec, project );
+					}
+				}
+		);
 
 		// NOTE : writing the marker file to the resources output dir causes the ProcessResources
 		// 		task that wrote there to become out-of-date
@@ -160,7 +169,8 @@ public class TestKitPlugin implements Plugin<Project> {
 		return dependencies;
 	}
 
-	private static void generateMarkerFile(File markerFile, TestKitSpec testKitSpec, Project project) {
+	private static void generateMarkerFile(Provider<RegularFile> markerFileRef, TestKitSpec testKitSpec, Project project) {
+		final File markerFile = markerFileRef.get().getAsFile();
 		project.getLogger().lifecycle( "Generating TestKit marker file - {}", markerFile.getAbsolutePath() );
 
 		prepareMarkerFile( markerFile, project );

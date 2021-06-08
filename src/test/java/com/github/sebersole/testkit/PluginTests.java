@@ -37,7 +37,7 @@ public class PluginTests {
 
 	@Test
 	@Project( "simple" )
-	@Disabled( "https://discuss.gradle.org/t/generate-file-into-processresources-output-directory-up-to-date/38059" )
+//	@Disabled( "https://discuss.gradle.org/t/generate-file-into-processresources-output-directory-up-to-date/38059" )
 	public void multipleProcessResourcesExecutions(ProjectScope scope) {
 		{
 			final GradleRunner gradleRunner = scope.createGradleRunner( "clean", "processTestKitResources" );

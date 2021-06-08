@@ -3,6 +3,8 @@ plugins {
     id 'com.github.sebersole.testkit-junit5'
 }
 
+buildDir = 'target'
+
 testKit {
     implicitProject( 'simple' )
 }

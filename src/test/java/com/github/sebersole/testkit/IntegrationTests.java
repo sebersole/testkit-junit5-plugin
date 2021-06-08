@@ -28,8 +28,6 @@ public class IntegrationTests {
 
 		project.getPlugins().apply( TestKitPlugin.class );
 
-		// NOTE : the use of `#getByName` enforces that the thing exists (non-null)
-
 		project.getPlugins().getPlugin( TestKitPlugin.class );
 		project.getExtensions().getByName( TestKitSpec.DSL_NAME );
 		project.getConfigurations().getByName( COMPILE_DEPENDENCIES_NAME );
