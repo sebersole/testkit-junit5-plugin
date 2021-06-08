@@ -17,7 +17,7 @@ plugins {
 }
 
 group = "com.github.sebersole"
-version = "1.1-SNAPSHOT"
+version = "1.1"
 
 
 repositories {
@@ -65,18 +65,18 @@ pluginBundle {
 
 val credentials: CredentialsContainer by project.extra
 
-if ( project.hasProperty( "hibernatePluginPortalUsername" ) ) {
-    credentials.setProperty( "hibernatePluginPortalUsername", project.property( "hibernatePluginPortalUsername" ) );
+if ( project.hasProperty( "pluginPortalUsername" ) ) {
+    credentials.setProperty( "pluginPortalUsername", project.property( "pluginPortalUsername" ) );
 }
-if ( credentials.getProperty( "hibernatePluginPortalUsername" ) != null ) {
-    project.setProperty( "gradle.publish.key", credentials.getProperty( "hibernatePluginPortalUsername" ) )
+if ( credentials.getProperty( "pluginPortalUsername" ) != null ) {
+    project.setProperty( "gradle.publish.key", credentials.getProperty( "pluginPortalUsername" ) )
 }
 
-if ( project.hasProperty( "hibernatePluginPortalPassword" ) ) {
-    credentials.setProperty( "hibernatePluginPortalPassword", project.property( "hibernatePluginPortalPassword" ) );
+if ( project.hasProperty( "pluginPortalPassword" ) ) {
+    credentials.setProperty( "pluginPortalPassword", project.property( "pluginPortalPassword" ) );
 }
-if ( credentials.getProperty( "hibernatePluginPortalPassword" ) != null ) {
-    project.setProperty( "gradle.publish.secret", credentials.getProperty( "hibernatePluginPortalPassword" ) )
+if ( credentials.getProperty( "pluginPortalPassword" ) != null ) {
+    project.setProperty( "gradle.publish.secret", credentials.getProperty( "pluginPortalPassword" ) )
 }
 
 configure<JavaPluginConvention> {
