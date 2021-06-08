@@ -14,10 +14,6 @@ plugins {
     // for publishing to portal
     id("com.gradle.plugin-publish") version "0.12.0"
     id("nu.studer.credentials") version "2.1"
-
-    // for publishing snapshots
-    id("maven-publish")
-    id("org.hibernate.build.maven-repo-auth") version "3.0.4"
 }
 
 group = "com.github.sebersole"
