@@ -5,6 +5,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import nu.studer.gradle.credentials.domain.CredentialsContainer
 
 plugins {
     `java-library`
@@ -19,15 +20,30 @@ plugins {
     id("org.hibernate.build.maven-repo-auth") version "3.0.4"
 }
 
-val pluginId by extra("com.github.sebersole.testkit-junit5")
-val pluginVersion by extra("1.1-SNAPSHOT" )
-
 group = "com.github.sebersole"
-version = pluginVersion
+version = "1.1-SNAPSHOT"
 
-configure<JavaPluginConvention> {
-    sourceCompatibility = JavaVersion.VERSION_1_8
+
+repositories {
+    mavenCentral()
 }
+
+dependencies {
+    val junitVersion by extra("5.3.1")
+    val hamcrestVersion by extra("1.3")
+
+    api( gradleApi() )
+
+    implementation(group = "org.junit.jupiter", name = "junit-jupiter-api", version = junitVersion)
+    implementation(gradleTestKit())
+
+    testImplementation(group = "org.hamcrest", name = "hamcrest-all", version = hamcrestVersion)
+    testImplementation(gradleTestKit())
+
+    testRuntimeOnly(group = "org.junit.jupiter", name = "junit-jupiter-engine", version = junitVersion)
+}
+
+val pluginId by extra("com.github.sebersole.testkit-junit5")
 
 gradlePlugin {
     plugins {
@@ -51,39 +67,26 @@ pluginBundle {
     }
 }
 
+val credentials: CredentialsContainer by project.extra
 
-repositories {
-    mavenCentral()
+if ( project.hasProperty( "hibernatePluginPortalUsername" ) ) {
+    credentials.setProperty( "hibernatePluginPortalUsername", project.property( "hibernatePluginPortalUsername" ) );
+}
+if ( credentials.getProperty( "hibernatePluginPortalUsername" ) != null ) {
+    project.setProperty( "gradle.publish.key", credentials.getProperty( "hibernatePluginPortalUsername" ) )
 }
 
-dependencies {
-    val junitVersion by extra("5.3.1")
-    val hamcrestVersion by extra("1.3")
-
-    api( gradleApi() )
-
-    implementation(group = "org.junit.jupiter", name = "junit-jupiter-api", version = junitVersion)
-    implementation(gradleTestKit())
-
-    testImplementation(group = "org.hamcrest", name = "hamcrest-all", version = hamcrestVersion)
-    testImplementation(gradleTestKit())
-
-    testRuntimeOnly(group = "org.junit.jupiter", name = "junit-jupiter-engine", version = junitVersion)
+if ( project.hasProperty( "hibernatePluginPortalPassword" ) ) {
+    credentials.setProperty( "hibernatePluginPortalPassword", project.property( "hibernatePluginPortalPassword" ) );
+}
+if ( credentials.getProperty( "hibernatePluginPortalPassword" ) != null ) {
+    project.setProperty( "gradle.publish.secret", credentials.getProperty( "hibernatePluginPortalPassword" ) )
 }
 
-
-publishing {
-    publications {
-        create("testKitPlugin", MavenPublication::class) {
-            from(components.getByName("java"))
-        }
-    }
-    repositories {
-        maven("https://repository.jboss.org/nexus/content/repositories/snapshots") {
-            name = "jboss-snapshots-repository"
-        }
-    }
+configure<JavaPluginConvention> {
+    sourceCompatibility = JavaVersion.VERSION_1_8
 }
+
 
 (tasks.javadoc.get().options as CoreJavadocOptions).addStringOption( "Xdoclint:none", "-quiet" )
 
