@@ -17,7 +17,7 @@ plugins {
 }
 
 group = "com.github.sebersole"
-version = "1.2-SNAPSHOT"
+version = "1.2.0"
 
 
 repositories {
@@ -54,6 +54,12 @@ pluginBundle {
     website = "https://github.com/sebersole/testkit-junit5-plugin"
     vcsUrl = "https://github.com/sebersole/testkit-junit5-plugin"
     tags = arrayListOf("gradle", "testkit", "testing", "sebersole")
+
+    mavenCoordinates {
+        groupId = project.group.toString()
+        artifactId = project.name
+        version = project.version.toString()
+    }
 
     plugins {
         getByName("testkit") {
