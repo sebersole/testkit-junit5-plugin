@@ -1,3 +1,5 @@
+package simple.src.testKit.resources.fixture
+
 plugins {
     id 'java'
     id 'com.github.sebersole.testkit-junit5'

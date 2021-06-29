@@ -1,11 +1,11 @@
+import nu.studer.gradle.credentials.domain.CredentialsContainer
 import java.io.FileWriter
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.Locale
-import nu.studer.gradle.credentials.domain.CredentialsContainer
+import java.util.*
 
 plugins {
     `java-library`
@@ -13,11 +13,15 @@ plugins {
 
     // for publishing to portal
     id("com.gradle.plugin-publish") version "0.12.0"
+
+    // to be able to publish locally.  see `publishing {}` below
+    `maven-publish`
+
     id("nu.studer.credentials") version "2.1"
 }
 
 group = "com.github.sebersole"
-version = "1.2.1-SNAPSHOT"
+version = "1.3.0-SNAPSHOT"
 
 
 repositories {
@@ -101,49 +105,74 @@ tasks.test {
     useJUnitPlatform()
 }
 
-val generateMarkerFileTask = task( "generateMarkerFile" ) {
-    val markerFile = File( tasks.processTestResources.get().destinationDir, "testkit_locator.properties" )
-    inputs.files( tasks.processTestResources )
-    outputs.file(markerFile)
+val generateMarkerFileTask = task( "generateLocalMarkerFile" ) {
+    val locatorDir = project.file( "$buildDir/testKit/locator" )
+    val locatorFile = File( locatorDir, "testkit_locator.properties" )
+    val resourcesDir: File = project.file( "$buildDir/build/resources/test" )
+    val stagingDir: File = project.file( "$buildDir/tmp/testKit" )
+
+//    val resources = sourceSets.getByName( "test" ).resources
+//    resources.srcDir( locatorDir )
+    tasks.test.get().classpath += project.files( locatorDir )
+//    sourceSets.getByName( "test" ).resources.srcDir( locatorDir )
+
+    outputs.file( locatorFile )
+    inputs.files( "$buildDir/build/resources/test" )
 
     doLast {
-        generateMarkerFile( sourceSets.test.get(), project )
+        logger.lifecycle("TestKit locator file : {}", locatorFile)
+        logger.lifecycle("TestKit resources dir : {}", resourcesDir)
+        logger.lifecycle("TestKit staging dir : {}", stagingDir)
+
+        try {
+            val created = locatorFile.createNewFile()
+            if (!created) {
+                project.logger.lifecycle("File creation failed, but with no exception")
+            }
+        }
+        catch (e: IOException) {
+            throw IllegalStateException("Could not create marker file `" + locatorFile.absolutePath + "`", e)
+        }
+
+        val formatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                .withLocale(Locale.ROOT)
+                .withZone(ZoneOffset.UTC)
+        val tmpDir: Directory = project.layout.buildDirectory.get().dir("tmp" ).dir( "testKit" )
+        try {
+            FileWriter(locatorFile).use { writer ->
+                writer.appendln("## Used by tests to locate the TestKit projects dir during test execution via resource lookup" )
+                writer.appendln("## Generated @ " + formatter.format( Instant.now() ) )
+                writer.appendln("testkit.base-dir=" + project.file( "$buildDir/resources/test" ).absolutePath.replace("\\","\\\\") )
+                writer.appendln("testkit.staging-dir=" + tmpDir.asFile.absolutePath.replace("\\","\\\\") )
+                writer.appendln("testkit.implicit-project-name=simple" )
+                writer.flush()
+            }
+        } catch (e: IOException) {
+            throw IllegalStateException("Unable to open marker file output stream `" + locatorFile.absolutePath + "`", e)
+        }
     }
 }
+
+
 
 tasks.processTestResources.get().finalizedBy( generateMarkerFileTask )
 
-fun generateMarkerFile(sourceSet: SourceSet, project: Project) {
-    val resourcesDir = sourceSet.output.resourcesDir
-    val markerFile = File( resourcesDir, "testkit_locator.properties" )
-    prepareMarkerFile(markerFile, project)
-    val formatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-            .withLocale(Locale.ROOT)
-            .withZone(ZoneOffset.UTC)
-    val tmpDir: Directory = project.layout.buildDirectory.get().dir("tmp" ).dir( "testKit" )
-    try {
-        FileWriter(markerFile).use { writer ->
-            writer.appendln("## Used by tests to locate the TestKit projects dir during test execution via resource lookup" )
-            writer.appendln("## Generated @ " + formatter.format( Instant.now() ) )
-            writer.appendln("testkit.tmp-dir=" + tmpDir.asFile.absolutePath.replace("\\","\\\\") )
-            writer.appendln("testkit.implicit-project-name=simple" )
-            writer.flush()
-        }
-    } catch (e: IOException) {
-        throw IllegalStateException("Unable to open marker file output stream `" + markerFile.absolutePath + "`", e)
-    }
-}
-
-fun prepareMarkerFile(markerFile: File, project: Project) {
-    try {
-        val created = markerFile.createNewFile()
-        if (!created) {
-            project.logger.lifecycle("File creation failed, but with no exception")
-        }
-    } catch (e: IOException) {
-        throw IllegalStateException("Could not create marker file `" + markerFile.absolutePath + "`", e)
-    }
-}
-
 // ###########################################################################
 
+
+publishing {
+    // Used to publish the plugin locally for testing.  To consume the plugin
+    // from here, the applying project needs to add this as a plugin repo.
+    // See https://docs.gradle.org/current/userguide/publishing_gradle_plugins.html#custom-plugin-repositories
+    //
+    // publishes to `~/.gradle/tmp/plugins`
+    //
+    // Use `gradlew publish` (instead of `gradlew publishPlugins`) to publish the
+    // plugin to this local plugin repo
+    repositories {
+        maven {
+            name = "local"
+            url = uri( "${gradle.gradleUserHomeDir}/tmp/plugins" )
+        }
+    }
+}

@@ -40,7 +40,7 @@ public class PluginTests {
 //	@Disabled( "https://discuss.gradle.org/t/generate-file-into-processresources-output-directory-up-to-date/38059" )
 	public void multipleProcessResourcesExecutions(ProjectScope scope) {
 		{
-			final GradleRunner gradleRunner = scope.createGradleRunner( "clean", "processTestKitResources" );
+			final GradleRunner gradleRunner = scope.createGradleRunner( "clean", "processTestKitResources", "--stacktrace" );
 			verify( gradleRunner );
 			final BuildResult buildResult = gradleRunner.build();
 			final BuildTask taskResult = buildResult.task( ":processTestKitResources" );

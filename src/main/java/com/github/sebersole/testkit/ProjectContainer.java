@@ -11,8 +11,9 @@ import java.util.Random;
 import java.util.Set;
 
 import static com.github.sebersole.testkit.TestKitPlugin.MARKER_FILE_NAME;
+import static com.github.sebersole.testkit.TestKitPlugin.TESTKIT_BASE_DIR;
 import static com.github.sebersole.testkit.TestKitPlugin.TESTKIT_IMPL_PROJ_NAME;
-import static com.github.sebersole.testkit.TestKitPlugin.TESTKIT_TMP_DIR;
+import static com.github.sebersole.testkit.TestKitPlugin.TESTKIT_STAGING_DIR;
 import static com.github.sebersole.testkit.TestKitPlugin.TEST_KIT;
 
 /**
@@ -20,7 +21,7 @@ import static com.github.sebersole.testkit.TestKitPlugin.TEST_KIT;
  */
 public class ProjectContainer {
 	private final File projectBaseDir;
-	private final File tmpDir;
+	private final File projectStagingDir;
 	private final String implicitProjectName;
 
 	private final Random randomGenerator = new Random();
@@ -37,10 +38,9 @@ public class ProjectContainer {
 		final File markerFile = new File( markerFilePath );
 		final Properties properties = loadProperties( markerFile );
 
-		tmpDir = extractTmpDir( properties );
+		projectBaseDir = extractBaseDir( properties );
+		projectStagingDir = extractStagingDir( properties );
 
-		projectBaseDir = markerFile.getParentFile();
-		verifyBaseDir( projectBaseDir );
 		System.out.printf( "TestKit project directory : %s\n", projectBaseDir.getAbsolutePath() );
 
 		String implicitProjectName = extractImplicitProjectName( properties );
@@ -59,20 +59,20 @@ public class ProjectContainer {
 		this.implicitProjectName = implicitProjectName;
 	}
 
-	public Set<String> getProjectNames() {
-		return projectNames;
+	public File getProjectBaseDir() {
+		return projectBaseDir;
+	}
+
+	public File getProjectStagingDir() {
+		return projectStagingDir;
 	}
 
 	public String getImplicitProjectName() {
 		return implicitProjectName;
 	}
 
-	public File getProjectBaseDir() {
-		return projectBaseDir;
-	}
-
-	public File getTmpDir() {
-		return tmpDir;
+	public Set<String> getProjectNames() {
+		return projectNames;
 	}
 
 	private URL locateMarker() {
@@ -100,19 +100,38 @@ public class ProjectContainer {
 		return properties;
 	}
 
-	private static void verifyBaseDir(File baseDirectory) {
-		assert baseDirectory.exists();
-		assert baseDirectory.isDirectory();
+	private static File extractBaseDir(Properties properties) {
+		final String baseDirPath = properties.getProperty( TESTKIT_BASE_DIR );
+		if ( baseDirPath == null ) {
+			throw new IllegalStateException( "Could not find `" + TESTKIT_BASE_DIR + "` in marker file" );
+		}
+
+		final File baseDir = new File( baseDirPath );
+		if ( ! baseDir.exists() ) {
+			throw new IllegalStateException( "TestKit base directory (`" + baseDirPath + "`) did not exist" );
+		}
+		if ( ! baseDir.isDirectory() ) {
+			throw new IllegalStateException( "TestKit base directory (`" + baseDirPath + "`) is not a directory" );
+		}
+
+		assert baseDir.exists();
+		assert baseDir.isDirectory();
+
+		return baseDir;
 	}
 
-	private File extractTmpDir(Properties properties) {
-		final String tmpDirPath = properties.getProperty( TESTKIT_TMP_DIR );
-		if ( tmpDirPath == null ) {
-			throw new IllegalStateException( "Could not find `" + TESTKIT_TMP_DIR + "` in marker file" );
+	private File extractStagingDir(Properties properties) {
+		final String stagingDirPath = properties.getProperty( TESTKIT_STAGING_DIR );
+		if ( stagingDirPath == null ) {
+			throw new IllegalStateException( "Could not find `" + TESTKIT_STAGING_DIR + "` in marker file" );
 		}
-		final File tmpDir = new File( tmpDirPath );
-		tmpDir.mkdirs();
-		return tmpDir;
+
+		final File stagingDir = new File( stagingDirPath );
+		stagingDir.mkdirs();
+
+		assert stagingDir.isDirectory();
+
+		return stagingDir;
 	}
 
 	private String extractImplicitProjectName(Properties properties) {
@@ -126,7 +145,7 @@ public class ProjectContainer {
 		final File projectSourceDir = new File( projectBaseDir, projectName );
 
 		// make a new directory in the tmpDir for the test
-		final File projectDir = new File( new File( tmpDir, TEST_KIT + randomGenerator.nextInt() ), projectName );
+		final File projectDir = new File( new File( projectStagingDir, TEST_KIT + randomGenerator.nextInt() ), projectName );
 		projectDir.mkdirs();
 
 
@@ -137,8 +156,8 @@ public class ProjectContainer {
 	}
 
 	void release() {
-		if ( tmpDir.exists() ) {
-			tmpDir.delete();
+		if ( projectStagingDir.exists() ) {
+			projectStagingDir.delete();
 		}
 	}
 }
